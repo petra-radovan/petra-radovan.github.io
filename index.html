@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+		<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
+		<title> Moja stranica </title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+		<style>
+			body {
+				background-color: #ffffff;
+			}
+
+			form.jumbotron {
+				background-color: #b3f2b7;
+			}
+
+			.hall-of-fame.jumbotron {
+				background-color: #f8f8f8;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="container-fluid row">
+			<div class="col-sm-9">
+				<img src="banner.png" class="img-fluid">
+				<div class="page-header">
+					<h1>Kolko puta moš kliknut u 10 sekundi?</h1>
+				</div>
+				 
+				<form class="jumbotron">
+					<!-- Ime -->
+					<div class="form-group row">
+						<label class="col-sm-2 col-form-label"> Ime </label>
+						<div class="col-sm-4"><input class="form-control" type="text" name="name"></div>
+					</div>
+
+					<!-- Godine -->
+					<div class="form-group row">
+						<label class="col-sm-2 col-form-label"> Godine </label>
+						<div class="col-sm-4"><input class="form-control" type="number" name="age"></div>
+					</div>
+
+					<!-- Spol -->
+					<fieldset class="form-group">
+				    	<div class="row">
+				      		<legend class="col-form-label col-sm-2 pt-0"> Spol </legend>
+				      		<div class="col-sm-10">
+				        		<div class="form-check">
+				          			<input class="form-check-input" type="radio" name="gender" value="z">
+				          			<label class="form-check-label"> ženski </label>
+				        		</div>
+				        		<div class="form-check">
+				          			<input class="form-check-input" type="radio" name="gender" value="m">
+				          			<label class="form-check-label"> muški </label>
+				        		</div>
+				      		</div>
+				    	</div>
+				  	</fieldset>
+
+					<!-- Igram na -->
+					<fieldset class="form-group">
+				    	<div class="row">
+				      		<legend class="col-form-label col-sm-2 pt-0"> Igram na </legend>
+				      		<div class="col-sm-10">
+				        		<div class="form-check">
+				          			<input class="form-check-input" type="radio" name="device" value="pc">
+				          			<label class="form-check-label"> računalu </label>
+				        		</div>
+				        		<div class="form-check">
+				          			<input class="form-check-input" type="radio" name="device" value="tablet">
+				          			<label class="form-check-label"> tabletu </label>
+				        		</div>
+				        		<div class="form-check">
+				          			<input class="form-check-input" type="radio" name="device" value="phone">
+				          			<label class="form-check-label"> mobitelu </label>
+				        		</div>
+				      		</div>
+				    	</div>
+				  	</fieldset>
+
+					
+				</form>
+
+				<p>
+					<button class="btn btn-success" style="width: 100%; font-size: 30px; padding: 2em 0em;" onclick="klik()"> Klikaj! </button>
+					<div class="alert alert-light" role="alert" id="broj-klikova"></div>
+				</p>
+			</div>
+
+			<div class="hall-of-fame jumbotron col-sm-3">
+				<p> Hall of fame, yo! </p>
+				<p> Hall of fame, yo! </p>
+				<p> Hall of fame, yo! </p>
+				<p> Hall of fame, yo! </p>
+			</div>
+		</div>
+
+ 		<script>
+ 			var counter = 0
+
+ 			var zapocelo = false
+ 			var zavrsilo = false
+
+ 			function prestani() {
+ 				zavrsilo = true
+ 			}
+
+ 			function klik() {
+ 				if (zavrsilo) return;
+
+ 				if (!zapocelo) {
+ 					zapocelo = true
+ 					setTimeout(prestani, 1000)
+ 				}
+
+ 				counter++
+
+ 				var counterView = document.getElementById("broj-klikova")
+ 				counterView.innerText = "Kliknuto " + counter + " puta!"
+ 			}
+ 		</script>
+	</body>
+</html>
