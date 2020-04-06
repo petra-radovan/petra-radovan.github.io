@@ -29,13 +29,13 @@
 			<div class="col-sm-9">
 				<img src="banner.png" class="img-fluid">
 				<div class="page-header">
-					<h1>Kolko puta moš kliknut u 10 sekundi?</h1>
+					<h3 style="color:#42bd19">Kolko puta moš kliknut u 3 sekunde?</h3>
 				</div>
 				 
 				<form class="jumbotron">
 					<!-- Ime -->
 					<div class="form-group row">
-						<label class="col-sm-2 col-form-label"> Ime </label>
+						<label class="col-sm-2 col-form-label"> Nadimak </label>
 						<div class="col-sm-4"><input class="form-control" type="text" name="name"></div>
 					</div>
 
@@ -87,9 +87,16 @@
 				</form>
 
 				<p>
-					<button class="btn btn-success disable-dbl-tap-zoom" style="width: 100%; font-size: 30px; padding: 2em 0em;" onclick="klik()"> Klikaj! </button>
-					<div class="alert alert-light" role="alert" id="broj-klikova"></div>
+					<button class="btn btn-success disable-dbl-tap-zoom" id="klikalo" style="width: 100%; font-size: 30px; padding: 2em 0em;" onclick="klik()"> Klikaj! </button>
+					<div class="row">
+						<span class="alert alert-light" role="alert" id="broj-klikova"></span>
+						<span id="reset-panel" style="visibility: hidden;">
+							<button class="btn btn-success disable-dbl-tap-zoom" onclick="reset()"> Započni opet! </button>
+						</span>
+					</div>
 				</p>
+
+				<p id="history"></p>
 			</div>
 
 			<div class="hall-of-fame jumbotron col-sm-3">
@@ -106,8 +113,39 @@
  			var zapocelo = false
  			var zavrsilo = false
 
+			var klikalo = document.getElementById("klikalo")
+			var reset_button = document.getElementById("reset-panel")
+			var counter_report = document.getElementById("broj-klikova")
+			var historyElement = document.getElementById("history")
+
+			var historyCounts = []
+			var best = 0
+			var totalSum = 0
+			var totalRuns = 0
+
+			function update_history() {
+				if (counter > best) best = counter
+				historyCounts.push(counter)
+				totalSum += counter
+				totalRuns += 1
+
+				var text = ""
+				for (var i of historyCounts) {
+					text = i + "\n" + text
+				}
+
+				var avg = Math.round(totalSum / totalRuns * 10) / 10
+				text = "Prosjek: " + avg + "\n" + text
+				text = "Najbolje: " + best + "\n" + text
+				historyElement.innerText = text
+			}
+
  			function prestani() {
  				zavrsilo = true
+ 				klikalo.innerText = "Rezultat: " + counter
+ 				reset_button.style.visibility = "visible"
+ 				counter_report.innerText = ""
+ 				update_history()
  			}
 
  			function klik() {
@@ -115,13 +153,21 @@
 
  				if (!zapocelo) {
  					zapocelo = true
- 					setTimeout(prestani, 1000)
+ 					setTimeout(prestani, 3000)
  				}
 
  				counter++
+ 				counter_report.innerText = "Kliknuto " + counter + " puta!"
+ 			}
 
- 				var counterView = document.getElementById("broj-klikova")
- 				counterView.innerText = "Kliknuto " + counter + " puta!"
+ 			function reset() {
+ 				counter = 0
+ 				zapocelo = false
+ 				zavrsilo = false
+
+ 				klikalo.innerText = "Klikaj!"
+ 				reset_button.style.visibility = "hidden"
+ 				counter_report.innerText = ""
  			}
  		</script>
 	</body>
