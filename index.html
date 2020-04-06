@@ -18,6 +18,10 @@
 			.hall-of-fame.jumbotron {
 				background-color: #f8f8f8;
 			}
+			
+			.disable-dbl-tap-zoom {
+  				touch-action: manipulation;
+			}
 		</style>
 	</head>
 	<body>
@@ -83,7 +87,7 @@
 				</form>
 
 				<p>
-					<button class="btn btn-success" style="width: 100%; font-size: 30px; padding: 2em 0em;" onclick="klik()"> Klikaj! </button>
+					<button class="btn btn-success disable-dbl-tap-zoom" style="width: 100%; font-size: 30px; padding: 2em 0em;" onclick="klik()"> Klikaj! </button>
 					<div class="alert alert-light" role="alert" id="broj-klikova"></div>
 				</p>
 			</div>
