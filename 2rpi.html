@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>2rπ</title>
+        <style>
+            * {
+                margin:  0;
+                padding: 0;
+            }
+
+            #theCanvas {
+                position: fixed;
+                left:      0;
+                top:       0;
+                width:  100%;
+                height: 100%;
+                touch-action: none;
+            }
+        </style>
+    </head>
+    <body>
+        <canvas id="theCanvas" onpointerdown="onMouseMove(event)" onpointerup="onMouseMove(event)" onpointermove="onMouseMove(event)"></canvas>
+
+        <script type="text/javascript">
+            var circleFitter = (function () {
+              var my = {}, points = [];
+
+              function linearSolve2x2(matrix, vector) {
+                var det = matrix[0]*matrix[3] - matrix[1]*matrix[2];
+                if (det < 1e-8) return false; //no solution
+                var y = (matrix[0]*vector[1] - matrix[2]*vector[0])/det;
+                var x = (vector[0] - matrix[1]*y)/matrix[0];
+                return [x,y];
+              }
+
+              my.addPoint = function(x, y) { points.push({x: x, y: y}); }
+              my.resetPoints = function() { points = []; }
+
+              my.compute = function () {
+                var result = {
+                  points: points,
+                  projections: [],
+                  distances: [],
+                  success: false,
+                  center: {x:0, y:0},
+                  radius: 0,
+                  residue: 0,
+                };
+
+                var m = points.reduce(function(p, c) { return { x: p.x + c.x / points.length, y: p.y + c.y / points.length }; }, {x: 0, y: 0});
+                
+                var u = points.map(function(e) { return { x: e.x - m.x, y: e.y - m.y }; });
+                var Sxx = u.reduce(function(p,c) { return p + c.x * c.x; }, 0);
+                var Sxy = u.reduce(function(p,c) { return p + c.x * c.y; }, 0);
+                var Syy = u.reduce(function(p,c) { return p + c.y * c.y; }, 0);
+                var v1  = u.reduce(function(p,c) { return p + 0.5 * (c.x * c.x * c.x + c.x * c.y * c.y); }, 0);
+                var v2  = u.reduce(function(p,c) { return p + 0.5 * (c.y * c.y * c.y + c.x * c.x * c.y); }, 0);
+                var sol = linearSolve2x2([Sxx, Sxy, Sxy, Syy], [v1, v2]);
+                if (sol === false) {
+                    return result;
+                }
+
+                result.success = true;
+
+                var radius2 = sol[0] * sol[0] + sol[1] * sol[1] + (Sxx + Syy) / points.length;
+                result.radius = Math.sqrt(radius2);
+
+                result.center.x = sol[0] + m.x;
+                result.center.y = sol[1] + m.y;
+
+                points.forEach(function(p) {
+                    var v = { x: p.x - result.center.x, y: p.y - result.center.y };
+                    var len2 = v.x * v.x + v.y * v.y;
+                    result.residue += radius2 - len2;
+
+                    var len = Math.sqrt(len2);
+                    result.distances.push(len - result.radius);
+                    result.projections.push({
+                        x: result.center.x + v.x * result.radius / len,
+                        y: result.center.y + v.y * result.radius / len
+                    });
+                });
+
+                return result;
+              }
+
+              return my;
+            }());
+        </script>
+
+        <script type="text/javascript">
+            var canvas = document.getElementById("theCanvas");
+            var ctx = null;
+
+            var State = {
+                INITIAL: 1,
+                DRAWING: 2,
+                RESULTS: 3,
+            };
+
+            var state = State.INITIAL;
+            var points = [];
+            var invisibleMode = false;
+
+            var result = null;
+
+            function lerp(a, b, t) {
+                return a + (b - a) * t;
+            }
+
+            function computeResult(points) {
+                circleFitter.resetPoints();
+                for (var p of points) {
+                    circleFitter.addPoint(p.x, p.y);
+                }
+                var fit = circleFitter.compute();
+
+                return {
+                    score: 0.64,
+                    center: { x: fit.center.x, y: fit.center.y },
+                    radius: fit.radius,
+                };
+            }
+
+            function onKeyDown(event) {
+                event = event || window.event;
+                if (event.keyCode == 73 /* I */) {
+                    invisibleMode = !invisibleMode;
+                }
+            }
+
+            function onMouseMove(event) {
+                if (event.buttons) {
+                    if (state !== State.DRAWING) {
+                        state = State.DRAWING;
+                        points = [];
+                    }
+
+                    points.push({ x: event.clientX, y: event.clientY });
+                } else if (state === State.DRAWING) {
+                    state = State.RESULTS;
+                    result = computeResult(points);
+                }
+            }
+
+            function renderBackground() {
+                var t = Math.sin(new Date() / 1000.0) * 0.5 + 0.5;
+                var r = Math.round(lerp(0x3f, 0x27, t));
+                var g = Math.round(lerp(0xcb, 0x99, t));
+                var b = Math.round(lerp(0xeb, 0xd6, t));
+                ctx.fillStyle = "rgb(" + r + "," + g + "," + b + ")";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            function renderStatus(text) {
+                ctx.font = "3em Comic Sans MS";
+                ctx.fillStyle = "#ffffff";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+            }
+
+            function renderInstructions() {
+                ctx.font = "1em Comic Sans MS";
+                ctx.fillStyle = "#ffffff";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "bottom";
+
+                ctx.fillText("Press 'I' to toggle invisible mode.", canvas.width / 2, canvas.height - 10);
+            }
+
+            function renderPoints() {
+                var color = "#e0e0e0";
+                var thickness = 5;
+                if (points.length < 3) {
+                    for (var point of points) {
+                        ctx.beginPath();
+                        ctx.arc(point.x, point.y, thickness / 2, 0, 2 * Math.PI, false);
+                        ctx.fillStyle = color;
+                        ctx.fill();
+                    }
+                } else {
+                    ctx.beginPath()
+                    ctx.moveTo(points[0].x, points[0].y);
+                    var i;
+                    for (i = 1; i < points.length - 2; i++)
+                    {
+                        var xc = (points[i].x + points[i + 1].x) / 2;
+                        var yc = (points[i].y + points[i + 1].y) / 2;
+                        ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+                    }
+                    ctx.quadraticCurveTo(points[i].x, points[i].y, points[i + 1].x, points[i + 1].y);
+
+                    ctx.lineWidth = thickness;
+                    ctx.strokeStyle = color;
+                    ctx.stroke();
+                }
+            }
+
+            function render() {
+                requestAnimationFrame(render);
+                canvas.width  = window.innerWidth;
+                canvas.height = window.innerHeight;
+                ctx = canvas.getContext("2d");
+
+                renderBackground();
+
+                if (state === State.INITIAL) {
+                    renderStatus("Start drawing!");
+                }
+
+                if (state === State.DRAWING) {
+                    if (!invisibleMode) {
+                        renderPoints();
+                    }
+                }
+
+                if (state === State.RESULTS) {
+                    renderPoints();
+
+                    ctx.beginPath();
+                    ctx.arc(result.center.x, result.center.y, result.radius, 0, 2 * Math.PI, false);
+                    ctx.lineWidth = 3;
+                    ctx.strokeStyle = "#ff0000";
+                    ctx.stroke();
+
+                    var status = "Score: " + Math.round(result.score * 100) + "%"
+                    renderStatus(status)
+                }
+
+                renderInstructions();
+            }
+
+            document.onkeydown = onKeyDown;
+            requestAnimationFrame(render);
+        </script>
+    </body>
+</html>
