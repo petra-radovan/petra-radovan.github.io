@@ -205,13 +205,15 @@
                 var distance = points.reduce(function(p, c) { return p + Math.abs(square(c.x - x) + square(c.y - y) - radius2) }, 0);
                 var error = distance / radius2 / points.length;
 
-                var start = points[0];
-                var end = points[points.length - 1];
-                var gap = (square(start.x - end.x) + square(start.y - end.y)) / radius2;
-                error += Math.max((gap - 0.1) * 0.3, 0);
+                var lineLength = 0;
+                for (var i = 1; i < points.length; i++)
+                    lineLength += Math.sqrt(square(points[i].x - points[i - 1].x) + square(points[i].y - points[i - 1].y))
+
+                var circumference = 2 * radius * Math.PI;
+                var gapError = Math.abs(lineLength - circumference) / circumference;
+                error += Math.max(gapError - 0.025, 0);
 
                 var score = Math.max(0, 1 - error * lerp(5, 2, radius / 1000));
-                // console.log(distance / points.length, error);
 
                 return {
                     score: score,
