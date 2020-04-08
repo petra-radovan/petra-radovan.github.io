@@ -2,13 +2,16 @@
 <html>
     <head>
         <title>2rπ</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta charset="UTF-8">
+
         <style>
             * {
                 margin:  0;
                 padding: 0;
             }
 
-            #theCanvas {
+            .fullpage {
                 position: fixed;
                 left:      0;
                 top:       0;
@@ -16,10 +19,64 @@
                 height: 100%;
                 touch-action: none;
             }
+
+            .hud {
+                z: 1;
+                pointer-events: none;
+
+                display: flex;
+                flex-direction: column;
+                justify-content: flex-end;
+            }
+
+            .footer {
+                padding-bottom: 0.5rem;
+                display: flex;
+                flex-direction: row;
+                justify-content: center;
+                align-items: baseline;
+                align-content: center;
+            }
+
+            .footer button {
+                color: #fff;
+                background-color: #343a40;
+                border-color: #343a40;
+                pointer-events: all;
+
+                display: inline-block;
+                cursor: pointer;
+                font-weight: 400;
+                text-align: center;
+                white-space: nowrap;
+                vertical-align: middle;
+                -webkit-user-select: none;
+                -moz-user-select: none;
+                -ms-user-select: none;
+                user-select: none;
+                border: 1px solid transparent;
+                padding: .375rem .75rem;
+                font-size: 1rem;
+                line-height: 1.5;
+                border-radius: .25rem;
+            }
+
+            #invisibilityToggle {
+                left:   0;
+                top:    0;
+                width:  8rem;
+                height: 2rem;
+            }
         </style>
     </head>
     <body>
-        <canvas id="theCanvas" onpointerdown="onMouseMove(event)" onpointerup="onMouseMove(event)" onpointermove="onMouseMove(event)"></canvas>
+        <canvas class="fullpage" id="theCanvas"></canvas>
+
+        <div class="hud fullpage">
+            <div class="footer">
+                <button id="invisibilityToggle" onclick="toggleInvisibleMode()"> Sakrij crtu </button>
+            </div>
+        </div>
 
         <script type="text/javascript">
             var circleFitter = (function () {
@@ -89,8 +146,18 @@
         </script>
 
         <script type="text/javascript">
+            var fontName = "Comic Sans MS";
+
             var canvas = document.getElementById("theCanvas");
+            var invisibleToggle = document.getElementById("theCanvas");
             var ctx = null;
+
+            var invisibleMode = false;
+            function toggleInvisibleMode()
+            {
+                invisibleMode = !invisibleMode;
+                invisibilityToggle.innerText = (invisibleMode ? "Pokaži crtu" : "Sakrij crtu");
+            }
 
             var State = {
                 INITIAL: 1,
@@ -100,44 +167,69 @@
 
             var state = State.INITIAL;
             var points = [];
-            var invisibleMode = false;
 
             var result = null;
+
+            function remToPixels(rem) {
+                return rem * parseFloat(getComputedStyle(document.body, null).fontSize);
+            }
 
             function lerp(a, b, t) {
                 return a + (b - a) * t;
             }
 
             function computeResult(points) {
-                circleFitter.resetPoints();
-                for (var p of points) {
-                    circleFitter.addPoint(p.x, p.y);
-                }
-                var fit = circleFitter.compute();
+                function square(x) { return x * x }
+
+                var m = points.reduce(function(p, c) { return { x: p.x + c.x / points.length, y: p.y + c.y / points.length }; }, { x: 0, y: 0 });
+                var u = points.map(function(e) { return { x: e.x - m.x, y: e.y - m.y }; });
+                var Sxx = u.reduce(function(p, c) { return p + c.x * c.x; }, 0);
+                var Sxy = u.reduce(function(p, c) { return p + c.x * c.y; }, 0);
+                var Syy = u.reduce(function(p, c) { return p + c.y * c.y; }, 0);
+
+                var v1  = u.reduce(function(p, c) { return p + 0.5 * (c.x * c.x * c.x + c.x * c.y * c.y); }, 0);
+                var v2  = u.reduce(function(p, c) { return p + 0.5 * (c.y * c.y * c.y + c.x * c.x * c.y); }, 0);
+
+                var det = Sxx * Syy - Sxy * Sxy;
+                if (det < 1e-8)
+                    return { score: 0, center: { x: 0, y: 0 }, radius: 0 }
+
+                var y = (Sxx * v2 - Sxy * v1) / det;
+                var x = (v1 - Sxy * y) / Sxx;
+
+                var radius2 = x*x + y*y + (Sxx+Syy)/points.length;
+                var radius = Math.sqrt(radius2);
+                x += m.x;
+                y += m.y;
+
+                var distance = points.reduce(function(p, c) { return p + Math.abs(square(c.x - x) + square(c.y - y) - radius2) }, 0);
+                var error = distance / radius2 / points.length;
+
+                var start = points[0];
+                var end = points[points.length - 1];
+                var gap = (square(start.x - end.x) + square(start.y - end.y)) / radius2;
+                error += Math.max((gap - 0.1) * 0.3, 0);
+
+                var score = Math.max(0, 1 - error * lerp(5, 2, radius / 1000));
+                // console.log(distance / points.length, error);
 
                 return {
-                    score: 0.64,
-                    center: { x: fit.center.x, y: fit.center.y },
-                    radius: fit.radius,
+                    score: score,
+                    center: { x: x, y: y },
+                    radius: radius,
                 };
             }
 
-            function onKeyDown(event) {
-                event = event || window.event;
-                if (event.keyCode == 73 /* I */) {
-                    invisibleMode = !invisibleMode;
+            function addPoint(x, y) {
+                if (state !== State.DRAWING) {
+                    state = State.DRAWING;
+                    points = [];
                 }
+                points.push({ x: x, y: y });
             }
 
-            function onMouseMove(event) {
-                if (event.buttons) {
-                    if (state !== State.DRAWING) {
-                        state = State.DRAWING;
-                        points = [];
-                    }
-
-                    points.push({ x: event.clientX, y: event.clientY });
-                } else if (state === State.DRAWING) {
+            function endDrawing() {
+                if (state === State.DRAWING) {
                     state = State.RESULTS;
                     result = computeResult(points);
                 }
@@ -153,20 +245,11 @@
             }
 
             function renderStatus(text) {
-                ctx.font = "3em Comic Sans MS";
+                ctx.font = "3em " + fontName;
                 ctx.fillStyle = "#ffffff";
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
                 ctx.fillText(text, canvas.width / 2, canvas.height / 2);
-            }
-
-            function renderInstructions() {
-                ctx.font = "1em Comic Sans MS";
-                ctx.fillStyle = "#ffffff";
-                ctx.textAlign = "center";
-                ctx.textBaseline = "bottom";
-
-                ctx.fillText("Press 'I' to toggle invisible mode.", canvas.width / 2, canvas.height - 10);
             }
 
             function renderPoints() {
@@ -206,7 +289,7 @@
                 renderBackground();
 
                 if (state === State.INITIAL) {
-                    renderStatus("Start drawing!");
+                    renderStatus("Nacrtaj kružnicu!");
                 }
 
                 if (state === State.DRAWING) {
@@ -224,14 +307,40 @@
                     ctx.strokeStyle = "#ff0000";
                     ctx.stroke();
 
-                    var status = "Score: " + Math.round(result.score * 100) + "%"
+                    var status = "Rezultat: " + Math.round(result.score * 100) + "%"
                     renderStatus(status)
                 }
 
-                renderInstructions();
+                // renderInstructions();
             }
 
-            document.onkeydown = onKeyDown;
+
+
+            function onMouseMove(event) {
+                if (event.buttons) {
+                    addPoint(event.clientX, event.clientY);
+                } else {
+                    endDrawing();
+                }
+            }
+
+            function onTouchEvent(event) {
+                if (event.touches && event.touches.length) {
+                    for (var touch of event.touches) {
+                        addPoint(touch.clientX, touch.clientY);
+                    }
+                } else {
+                    endDrawing();
+                }
+            }
+
+            canvas.onmousedown = onMouseMove;
+            canvas.onmouseup   = onMouseMove;
+            canvas.onmousemove = onMouseMove;
+            canvas.ontouchstart = onTouchEvent;
+            canvas.ontouchend   = onTouchEvent;
+            canvas.ontouchmove  = onTouchEvent;
+
             requestAnimationFrame(render);
         </script>
     </body>
